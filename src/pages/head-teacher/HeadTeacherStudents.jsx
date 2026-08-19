@@ -84,7 +84,7 @@ function HeadTeacherStudents() {
                     <td><strong>{s.firstName} {s.lastName}</strong></td>
                     <td>{s.email}</td>
                     <td><span className="badge badge--success">Enrolled</span></td>
-                    <td><strong>88%</strong></td>
+                    <td><strong>—</strong></td>
                   </tr>
                 ))}
               </tbody>

@@ -26,7 +26,8 @@ export function AuthProvider({ children }) {
 
       try {
         const { data } = await api.get('/auth/me')
-        const nextUser = data.user || data
+        // Backend wraps the user object as { success, data: user }.
+        const nextUser = data?.data ?? data?.user ?? data
         setUser(nextUser)
         return nextUser
       } catch (error) {
@@ -42,7 +43,9 @@ export function AuthProvider({ children }) {
   const login = useCallback(
     async (credentials) => {
       const { data } = await api.post('/auth/login', credentials)
-      const nextToken = data.token || data.accessToken
+      // Backend returns { success, message, data: { token, user } }.
+      const payload = data?.data ?? data
+      const nextToken = payload.token || payload.accessToken
 
       if (!nextToken) {
         throw new Error('No token returned from the server.')
@@ -51,7 +54,7 @@ export function AuthProvider({ children }) {
       localStorage.setItem(TOKEN_KEY, nextToken)
       setToken(nextToken)
 
-      const nextUser = data.user || (await refreshUser(nextToken))
+      const nextUser = payload.user || (await refreshUser(nextToken))
       setUser(nextUser)
       return nextUser
     },
@@ -60,17 +63,18 @@ export function AuthProvider({ children }) {
 
   const register = useCallback(async (payload) => {
     const { data } = await api.post('/auth/register', payload)
-    if (data.token) {
-      localStorage.setItem(TOKEN_KEY, data.token)
-      setToken(data.token)
+    const body = data?.data ?? data
+    if (body.token) {
+      localStorage.setItem(TOKEN_KEY, body.token)
+      setToken(body.token)
     }
 
-    const nextUser = data.user || null
+    const nextUser = body.user || null
     if (nextUser) {
       setUser(nextUser)
     }
 
-    return data
+    return body
   }, [])
 
   const logout = useCallback(() => {

@@ -62,8 +62,8 @@ function HeadTeacherClasses() {
                 <span className="badge badge--primary">{c.code || 'CLASS'}</span>
               </div>
               <div className="session-card__body">
-                <p><strong>Capacity:</strong> {c.capacity || 40} Students</p>
-                <p><strong>Attendance Rate:</strong> 90%</p>
+                <p><strong>Attendance Rate:</strong> —</p>
+                <p><strong>Capacity:</strong> {c.capacity ? `${c.capacity} Students` : '—'}</p>
               </div>
             </div>
           ))}

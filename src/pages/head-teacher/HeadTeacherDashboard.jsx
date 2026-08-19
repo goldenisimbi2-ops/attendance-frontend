@@ -5,60 +5,36 @@ import {
   CalendarCheck2,
   CheckCircle2,
   GraduationCap,
-  TrendingDown,
-  UserCheck,
+  Info,
   UserRound,
-  UserX,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../app/api'
-import Spinner from '../../component/ui/Spinner'
+import StatCard from '../../component/StatCard'
+import LoadingSkeleton from '../../component/LoadingSkeleton'
+import ErrorState from '../../component/ErrorState'
+import EmptyState from '../../component/EmptyState'
+
+// Backend wraps responses as { success, data: ... }.
+function unwrap(payload) {
+  if (payload && typeof payload === 'object' && 'data' in payload) return payload.data ?? payload
+  return payload
+}
 
 function HeadTeacherDashboard() {
   const navigate = useNavigate()
-  const [data, setData] = useState(null)
+  const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   const loadData = async () => {
     try {
       setLoading(true)
-
-      // Fetch dashboard metrics or fall back gracefully
-      const [dashRes, classesRes, usersRes, sessionsRes] = await Promise.all([
-        api.get('/dashboard').catch(() => ({ data: { data: null } })),
-        api.get('/classes').catch(() => ({ data: { data: [] } })),
-        api.get('/users').catch(() => ({ data: { data: [] } })),
-        api.get('/attendance-sessions').catch(() => ({ data: { data: [] } })),
-      ])
-
-      const dash = dashRes.data?.data || {}
-      const classes = classesRes.data?.data || []
-      const users = usersRes.data?.data || []
-      const sessions = sessionsRes.data?.data || []
-
-      const totalStudents = dash.totalStudents || users.filter((u) => u.role === 'student').length || 120
-      const totalTeachers = dash.totalTeachers || users.filter((u) => u.role === 'teacher').length || 15
-      const totalClasses = dash.totalClasses || classes.length || 8
-      const todaySessions = sessions.length || 12
-
-      const present = dash.present || 98
-      const absent = dash.absent || 8
-      const late = dash.late || 5
-      const overallRate = dash.overallAttendance !== undefined ? Math.round(dash.overallAttendance) : 89
-
-      setData({
-        totalStudents,
-        totalTeachers,
-        totalClasses,
-        todaySessions,
-        present,
-        absent,
-        late,
-        overallRate,
-        classes,
-      })
-    } catch {
-      // Fallback to default metrics if endpoints are unauthorized or offline
+      setError(null)
+      const { data } = await api.get('/dashboard')
+      setStats(unwrap(data) || {})
+    } catch (err) {
+      setError(err)
     } finally {
       setLoading(false)
     }
@@ -70,195 +46,91 @@ function HeadTeacherDashboard() {
 
   if (loading) {
     return (
-      <div className="loading-card">
-        <Spinner size="large" />
-        <h3>Loading school-wide attendance dashboard...</h3>
+      <div className="dashboard-shell">
+        <LoadingSkeleton rows={2} columns={8} type="cards" />
+        <LoadingSkeleton rows={5} columns={6} />
       </div>
     )
   }
 
-  const renderPerformanceBadge = (rate) => {
-    if (rate >= 85) {
-      return <span className="badge badge--success">Good attendance</span>
-    }
-    if (rate >= 70) {
-      return <span className="badge badge--warning">Needs attention</span>
-    }
-    return <span className="badge badge--danger">Critical</span>
-  }
-
-  // Sample data for school-wide overview if backend doesn't have detailed joins yet
-  const classPerformance = [
-    { name: 'S6 Computer Science', teacher: 'John Mugisha', subject: 'Computer Science', students: 40, present: 35, absent: 3, late: 2, rate: 87.5 },
-    { name: 'S5 Mathematics', teacher: 'Claire Uwase', subject: 'Mathematics', students: 38, present: 32, absent: 4, late: 2, rate: 84.2 },
-    { name: 'S4 Physics', teacher: 'Eric Ndayishimiye', subject: 'Physics', students: 42, present: 28, absent: 10, late: 4, rate: 66.7 },
-  ]
-
-  const lowAttendanceStudents = [
-    { name: 'Patrick Hakizimana', class: 'S4 Physics', rate: 65, present: 26, absent: 12, late: 2 },
-    { name: 'Divine Umutoni', class: 'S5 Mathematics', rate: 68, present: 28, absent: 10, late: 3 },
-  ]
+  const n = (value) => (value == null ? '—' : value)
 
   return (
     <div className="dashboard-shell">
-      <div className="page-header page-header--hero">
+      <div className="welcome-hero">
         <div>
-          <p className="eyebrow">Head Teacher Dashboard</p>
-          <h2>Welcome back, Head Teacher</h2>
-          <p className="muted">Monitor attendance across classes, students, and teachers.</p>
+          <p className="welcome-hero__eyebrow">Head teacher portal</p>
+          <h1>Welcome back</h1>
+          <p>Monitor attendance across classes, students, and teachers.</p>
+        </div>
+        <div className="welcome-hero__actions">
+          <button type="button" className="btn btn-primary" onClick={() => navigate('/head-teacher/monitoring')}>Attendance Monitoring</button>
+          <button type="button" className="btn btn-secondary" onClick={() => navigate('/head-teacher/reports')}>Attendance Reports</button>
         </div>
       </div>
 
-      <div className="stats-grid stats-grid--four">
-        <article className="metric-card">
-          <div className="metric-card__icon metric-card__icon--primary"><GraduationCap size={20} /></div>
-          <div className="metric-card__content"><span>TOTAL STUDENTS</span><strong>{data?.totalStudents}</strong><small>Enrolled</small></div>
-        </article>
-
-        <article className="metric-card">
-          <div className="metric-card__icon metric-card__icon--info"><UserRound size={20} /></div>
-          <div className="metric-card__content"><span>TOTAL TEACHERS</span><strong>{data?.totalTeachers}</strong><small>Faculty staff</small></div>
-        </article>
-
-        <article className="metric-card">
-          <div className="metric-card__icon metric-card__icon--primary"><BookOpen size={20} /></div>
-          <div className="metric-card__content"><span>TOTAL CLASSES</span><strong>{data?.totalClasses}</strong><small>Active classes</small></div>
-        </article>
-
-        <article className="metric-card">
-          <div className="metric-card__icon metric-card__icon--warning"><CalendarCheck2 size={20} /></div>
-          <div className="metric-card__content"><span>TODAY&apos;S SESSIONS</span><strong>{data?.todaySessions}</strong><small>Sessions held</small></div>
-        </article>
-
-        <article className="metric-card">
-          <div className="metric-card__icon metric-card__icon--success"><UserCheck size={20} /></div>
-          <div className="metric-card__content"><span>PRESENT TODAY</span><strong>{data?.present}</strong><small>Checked in</small></div>
-        </article>
-
-        <article className="metric-card">
-          <div className="metric-card__icon metric-card__icon--danger"><UserX size={20} /></div>
-          <div className="metric-card__content"><span>ABSENT TODAY</span><strong>{data?.absent}</strong><small>Unexcused</small></div>
-        </article>
-
-        <article className="metric-card">
-          <div className="metric-card__icon metric-card__icon--warning"><BarChart3 size={20} /></div>
-          <div className="metric-card__content"><span>LATE TODAY</span><strong>{data?.late}</strong><small>Late arrivals</small></div>
-        </article>
-
-        <article className="metric-card">
-          <div className="metric-card__icon metric-card__icon--success"><CheckCircle2 size={20} /></div>
-          <div className="metric-card__content"><span>OVERALL RATE</span><strong>{data?.overallRate}%</strong><small>School average</small></div>
-        </article>
+      <div className="notice-banner">
+        <Info size={22} style={{ flex: 'none', marginTop: '2px' }} />
+        <div>
+          <h3>Head teacher monitoring needs backend support</h3>
+          <p>
+            The backend only authorizes <code>admin</code>, <code>teacher</code>, and <code>student</code>. Add a
+            <code>head_teacher</code> role and school-wide read endpoints (dashboard, attendance, classes,
+            students/low-attendance, teachers, reports) so real data can be shown. No fabricated statistics are displayed.
+          </p>
+        </div>
       </div>
 
-      <section className="panel">
-        <div className="panel__header">
-          <div>
-            <h3>Today&apos;s Attendance Overview</h3>
-            <span className="muted small-text">School-wide attendance by class session</span>
+      {error ? (
+        <ErrorState message={error.message} retryAction={loadData} status={error.status} />
+      ) : (
+        <>
+          <div className="stats-grid stats-grid--auto">
+            <StatCard icon={GraduationCap} label="Total Students" value={n(stats?.totalStudents)} trendLabel="School-wide" />
+            <StatCard icon={UserRound} label="Total Teachers" value={n(stats?.totalTeachers)} trendLabel="School-wide" />
+            <StatCard icon={BookOpen} label="Total Classes" value={n(stats?.totalClasses)} trendLabel="School-wide" />
+            <StatCard icon={CalendarCheck2} label="Total Sessions" value={n(stats?.totalSessions)} trendLabel="Scheduled" />
+            <StatCard icon={CheckCircle2} label="Present" value={n(stats?.present)} trendLabel="All records" />
+            <StatCard icon={UserRound} label="Absent" value={n(stats?.absent)} trendLabel="All records" />
+            <StatCard icon={BarChart3} label="Late" value={n(stats?.late)} trendLabel="All records" />
+            <StatCard icon={BarChart3} label="Overall Attendance" value={stats?.overallAttendance != null ? `${Math.round(stats.overallAttendance)}%` : '—'} trendLabel="Rate" />
           </div>
-          <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate('/head-teacher/monitoring')}>
-            View All Monitoring
-          </button>
-        </div>
 
-        <div className="table-responsive">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Class</th>
-                <th>Teacher</th>
-                <th>Subject</th>
-                <th>Total Students</th>
-                <th>Present</th>
-                <th>Absent</th>
-                <th>Late</th>
-                <th>Attendance Rate</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {classPerformance.map((item, idx) => (
-                <tr key={idx}>
-                  <td><strong>{item.name}</strong></td>
-                  <td>{item.teacher}</td>
-                  <td>{item.subject}</td>
-                  <td>{item.students}</td>
-                  <td className="text-success">{item.present}</td>
-                  <td className="text-danger">{item.absent}</td>
-                  <td className="text-warning">{item.late}</td>
-                  <td><strong>{item.rate}%</strong></td>
-                  <td>{renderPerformanceBadge(item.rate)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+          <section className="panel">
+            <div className="panel__header">
+              <h3>Today&apos;s Attendance Overview</h3>
+            </div>
+            <EmptyState
+              icon={CalendarCheck2}
+              title="No per-class attendance data available"
+              message="A school-wide endpoint returning each class with its teacher, subject, total students, and today’s present / absent / late counts is required."
+            />
+          </section>
 
-      <div className="content-grid content-grid--two">
-        <section className="panel">
-          <div className="panel__header">
-            <h3>Class Attendance Performance</h3>
-          </div>
-          <div className="subject-progress-list">
-            {classPerformance.map((c, idx) => (
-              <div key={idx} className="subject-progress-item">
-                <div className="subject-progress-header">
-                  <strong>{c.name}</strong>
-                  <span>{c.rate}%</span>
-                </div>
-                <div className="progress-bar">
-                  <div
-                    className={`progress-bar__fill ${c.rate >= 85 ? 'progress-bar__fill--success' : c.rate >= 70 ? 'progress-bar__fill--warning' : 'progress-bar__fill--danger'
-                      }`}
-                    style={{ width: `${c.rate}%` }}
-                  ></div>
+          <div className="content-grid content-grid--two">
+            <section className="panel">
+              <div className="panel__header"><h3>Class Attendance Performance</h3></div>
+              <EmptyState icon={BookOpen} title="No class performance data" message="Class-by-class attendance rates will appear here once the backend endpoint is available." />
+            </section>
+
+            <section className="panel">
+              <div className="panel__header">
+                <div>
+                  <h3>Students With Low Attendance</h3>
+                  <span className="muted small-text">Students requiring follow-up</span>
                 </div>
               </div>
-            ))}
+              <EmptyState
+                icon={GraduationCap}
+                title="No low-attendance data"
+                message="Students below the attendance threshold will be listed here when the backend provides it."
+                action={() => navigate('/head-teacher/students')}
+                actionLabel="Open students page"
+              />
+            </section>
           </div>
-        </section>
-
-        <section className="panel">
-          <div className="panel__header">
-            <div>
-              <h3>Students With Low Attendance</h3>
-              <span className="muted small-text">Students requiring administrative follow-up</span>
-            </div>
-          </div>
-          <div className="table-responsive">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Student</th>
-                  <th>Class</th>
-                  <th>Rate</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lowAttendanceStudents.map((st, idx) => (
-                  <tr key={idx}>
-                    <td><strong>{st.name}</strong></td>
-                    <td>{st.class}</td>
-                    <td><span className="badge badge--danger"><TrendingDown size={13} /> {st.rate}%</span></td>
-                    <td>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline"
-                        onClick={() => navigate('/head-teacher/students')}
-                      >
-                        View Details
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
+        </>
+      )}
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AlertCircle, BookOpen } from 'lucide-react'
+import { AlertCircle, BookOpen, Info } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import api, { getErrorMessage } from '../../app/api'
 import Spinner from '../../component/ui/Spinner'
@@ -7,6 +7,8 @@ import Spinner from '../../component/ui/Spinner'
 function MyClasses() {
   const navigate = useNavigate()
   const [classes, setClasses] = useState([])
+  const [sessions, setSessions] = useState([])
+  const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -14,9 +16,17 @@ function MyClasses() {
     try {
       setLoading(true)
       setError('')
-      const { data } = await api.get('/teachers/me/classes')
-      const rows = data?.data || data?.classes || (Array.isArray(data) ? data : [])
+      const [classesRes, sessionsRes, recordsRes] = await Promise.all([
+        api.get('/teachers/me/classes'),
+        api.get('/teachers/me/sessions').catch(() => ({ data: { data: [] } })),
+        api.get('/teachers/me/attendance').catch(() => ({ data: { data: [] } })),
+      ])
+      const rows = classesRes.data?.data || classesRes.data?.classes || (Array.isArray(classesRes.data) ? classesRes.data : [])
       setClasses(rows)
+      const sessionRows = sessionsRes.data?.data || []
+      setSessions(Array.isArray(sessionRows) ? sessionRows : [])
+      const recordRows = recordsRes.data?.data || []
+      setRecords(Array.isArray(recordRows) ? recordRows : [])
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {
@@ -37,6 +47,35 @@ function MyClasses() {
     )
   }
 
+  // Build lookup tables from real session/record data.
+  const sessionsByAssignment = {}
+  sessions.forEach((session) => {
+    const key = session.classSubjectId
+    if (!sessionsByAssignment[key]) sessionsByAssignment[key] = []
+    sessionsByAssignment[key].push(session)
+  })
+
+  const enriched = classes.map((item) => {
+    const assignmentSessions = sessionsByAssignment[item.id] || []
+    const sessionIds = new Set(assignmentSessions.map((s) => s.id))
+    const assignmentRecords = records.filter((r) => sessionIds.has(r.attendanceSessionId))
+    const marked = assignmentRecords.length
+    const present = assignmentRecords.filter((r) => r.status === 'present' || r.status === 'late').length
+    const rate = marked > 0 ? Math.round((present / marked) * 100) : null
+    const todayStr = new Date().toISOString().split('T')[0]
+    const nextSession = assignmentSessions
+      .filter((s) => s.date && String(s.date) >= todayStr)
+      .sort((a, b) => (String(a.date) > String(b.date) ? 1 : -1))[0]
+
+    return {
+      ...item,
+      sessions: assignmentSessions,
+      studentCount: item.studentCount || item.students?.length || null,
+      attendanceRate: rate,
+      nextSession,
+    }
+  })
+
   return (
     <div className="dashboard-shell">
       <div className="page-header">
@@ -56,7 +95,7 @@ function MyClasses() {
             Retry
           </button>
         </div>
-      ) : classes.length === 0 ? (
+      ) : enriched.length === 0 ? (
         <div className="empty-state">
           <BookOpen size={48} className="muted" />
           <h3>No assigned classes found</h3>
@@ -64,12 +103,10 @@ function MyClasses() {
         </div>
       ) : (
         <div className="cards-grid">
-          {classes.map((item) => {
-            const className = item.class?.name || item.className || item.name || 'Classroom'
-            const classCode = item.class?.code || item.classCode || 'C-101'
-            const subjectName = item.subject?.name || item.subjectName || 'General Subject'
-            const studentCount = item.studentCount || item.students?.length || 30
-            const attendanceRate = item.attendanceRate || 92
+          {enriched.map((item) => {
+            const className = item.class?.name || item.className || item.name || '—'
+            const classCode = item.class?.code || item.classCode || '—'
+            const subjectName = item.subject?.name || item.subjectName || '—'
 
             return (
               <div key={item.id} className="session-card">
@@ -79,9 +116,14 @@ function MyClasses() {
                 </div>
                 <div className="session-card__body">
                   <p><strong>Subject:</strong> {subjectName}</p>
-                  <p><strong>Enrolled Students:</strong> {studentCount}</p>
-                  <p><strong>Attendance Rate:</strong> {attendanceRate}%</p>
-                  <p><strong>Next Session:</strong> Today, 09:00 AM</p>
+                  <p><strong>Enrolled Students:</strong> {item.studentCount != null ? item.studentCount : '—'}</p>
+                  <p><strong>Attendance Rate:</strong> {item.attendanceRate != null ? `${item.attendanceRate}%` : '—'}</p>
+                  <p>
+                    <strong>Next Session:</strong>{' '}
+                    {item.nextSession
+                      ? `${item.nextSession.date} • ${item.nextSession.startTime || '—'}`
+                      : '—'}
+                  </p>
                 </div>
                 <div className="session-card__footer">
                   <button
@@ -97,6 +139,14 @@ function MyClasses() {
           })}
         </div>
       )}
+
+      <div className="inline-note">
+        <Info size={15} />
+        <span>
+          Student counts and per-class attendance rates are derived from your real sessions and records. Exact enrolled
+          counts require the backend to include class/student associations in the class-subject response.
+        </span>
+      </div>
     </div>
   )
 }

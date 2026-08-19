@@ -70,17 +70,13 @@ function StudentClasses() {
               <h3>Active Subjects</h3>
             </div>
             <div className="session-list">
-              <div className="session-row">
-                <div><strong>Mathematics</strong><span>Core Subject</span></div>
-                <span className="badge badge--primary">Active</span>
-              </div>
-              <div className="session-row">
-                <div><strong>English</strong><span>Language & Communication</span></div>
-                <span className="badge badge--primary">Active</span>
-              </div>
-              <div className="session-row">
-                <div><strong>Computer Science</strong><span>Technical</span></div>
-                <span className="badge badge--primary">Active</span>
+              <div className="empty-state">
+                <GraduationCap size={36} className="muted" />
+                <h4>Subjects not available yet</h4>
+                <p>
+                  The backend does not expose the list of subjects for a student. This section will populate once the
+                  API returns the class's subjects (e.g. via /api/students/me/subjects).
+                </p>
               </div>
             </div>
           </section>

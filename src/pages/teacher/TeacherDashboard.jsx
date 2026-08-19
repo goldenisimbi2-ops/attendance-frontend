@@ -95,8 +95,8 @@ function TeacherDashboard() {
           <div className="metric-card__icon metric-card__icon--info"><Users size={20} /></div>
           <div className="metric-card__content">
             <span>MY STUDENTS</span>
-            <strong>{classes.reduce((acc, c) => acc + (c.studentCount || 30), 0)}</strong>
-            <small>Total enrolled</small>
+            <strong>{new Set(records.map((r) => r.studentId)).size}</strong>
+            <small>In marked records</small>
           </div>
         </article>
 
@@ -104,7 +104,7 @@ function TeacherDashboard() {
           <div className="metric-card__icon metric-card__icon--primary"><ClipboardCheck size={20} /></div>
           <div className="metric-card__content">
             <span>MY SUBJECTS</span>
-            <strong>{classes.length > 0 ? classes.length : 1}</strong>
+            <strong>{classes.length}</strong>
             <small>Assigned subjects</small>
           </div>
         </article>

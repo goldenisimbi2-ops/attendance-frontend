@@ -31,7 +31,7 @@ function HeadTeacherReports() {
     )
   }
 
-  const rate = data?.overallAttendance !== undefined ? Math.round(data.overallAttendance) : 89
+  const rate = data?.overallAttendance !== undefined ? Math.round(data.overallAttendance) : null
 
   return (
     <div className="dashboard-shell">
@@ -46,15 +46,15 @@ function HeadTeacherReports() {
       <div className="stats-grid stats-grid--four">
         <article className="metric-card">
           <div className="metric-card__icon metric-card__icon--primary"><BarChart3 size={20} /></div>
-          <div className="metric-card__content"><span>SCHOOL ATTENDANCE RATE</span><strong>{rate}%</strong></div>
+          <div className="metric-card__content"><span>SCHOOL ATTENDANCE RATE</span><strong>{rate != null ? `${rate}%` : '—'}</strong></div>
         </article>
         <article className="metric-card">
           <div className="metric-card__icon metric-card__icon--success"><Users size={20} /></div>
-          <div className="metric-card__content"><span>TOTAL RECORDS</span><strong>{data?.totalRecords || 450}</strong></div>
+          <div className="metric-card__content"><span>TOTAL RECORDS</span><strong>{data?.totalRecords ?? '—'}</strong></div>
         </article>
         <article className="metric-card">
           <div className="metric-card__icon metric-card__icon--warning"><TrendingUp size={20} /></div>
-          <div className="metric-card__content"><span>ACTIVE SESSIONS</span><strong>{data?.totalSessions || 18}</strong></div>
+          <div className="metric-card__content"><span>ACTIVE SESSIONS</span><strong>{data?.totalSessions ?? '—'}</strong></div>
         </article>
       </div>
 
@@ -63,9 +63,9 @@ function HeadTeacherReports() {
           <h3>Overall School Attendance Progress</h3>
         </div>
         <div className="progress-bar-large mt-2">
-          <div className="progress-bar-large__fill" style={{ width: `${rate}%` }}></div>
+          <div className="progress-bar-large__fill" style={{ width: `${rate != null ? rate : 0}%` }}></div>
         </div>
-        <p className="muted mt-2">The school-wide attendance rate is currently {rate}%.</p>
+        <p className="muted mt-2">The school-wide attendance rate is currently {rate != null ? `${rate}%` : '—'}.</p>
       </section>
     </div>
   )
