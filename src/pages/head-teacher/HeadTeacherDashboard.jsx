@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../app/api'
+import { useAuth } from '../../app/store'
 import StatCard from '../../component/StatCard'
 import LoadingSkeleton from '../../component/LoadingSkeleton'
 import ErrorState from '../../component/ErrorState'
@@ -22,6 +23,7 @@ function unwrap(payload) {
 }
 
 function HeadTeacherDashboard() {
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -60,7 +62,7 @@ function HeadTeacherDashboard() {
       <div className="welcome-hero">
         <div>
           <p className="welcome-hero__eyebrow">Head teacher portal</p>
-          <h1>Welcome back</h1>
+          <h1>Welcome back{user?.lastName ? `, ${user.lastName}` : ''}</h1>
           <p>Monitor attendance across classes, students, and teachers.</p>
         </div>
         <div className="welcome-hero__actions">
@@ -69,17 +71,6 @@ function HeadTeacherDashboard() {
         </div>
       </div>
 
-      <div className="notice-banner">
-        <Info size={22} style={{ flex: 'none', marginTop: '2px' }} />
-        <div>
-          <h3>Head teacher monitoring needs backend support</h3>
-          <p>
-            The backend only authorizes <code>admin</code>, <code>teacher</code>, and <code>student</code>. Add a
-            <code>head_teacher</code> role and school-wide read endpoints (dashboard, attendance, classes,
-            students/low-attendance, teachers, reports) so real data can be shown. No fabricated statistics are displayed.
-          </p>
-        </div>
-      </div>
 
       {error ? (
         <ErrorState message={error.message} retryAction={loadData} status={error.status} />

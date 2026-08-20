@@ -268,10 +268,11 @@ img { max-width: 100%; }
   border-color: var(--border);
   color: var(--text);
 }
-.btn-danger {
-  background: var(--danger);
-  color: white;
-}
+.btn-danger { background: var(--danger); color: white; }
+.btn-success { background: var(--success); color: white; }
+.btn-success:hover { background: #059669; }
+.btn-warning { background: var(--warning); color: white; }
+.btn-warning:hover { background: #d97706; }
 .btn:disabled { opacity: 0.65; cursor: not-allowed; }
 
 .dashboard-shell { display: flex; flex-direction: column; gap: 1.25rem; }

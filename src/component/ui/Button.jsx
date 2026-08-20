@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types'
 
 function Button({ children, type = 'button', variant = 'primary', className = '', disabled = false, ...props }) {
-  const variantClass = variant === 'secondary' ? 'btn btn-secondary' : variant === 'danger' ? 'btn btn-danger' : 'btn btn-primary'
+  const variantClass = variant === 'secondary' ? 'btn btn-secondary' : variant === 'danger' ? 'btn btn-danger' : variant === 'success' ? 'btn btn-success' : variant === 'warning' ? 'btn btn-warning' : 'btn btn-primary'
 
   return (
     <button type={type} className={`${variantClass} ${className}`.trim()} disabled={disabled} {...props}>
@@ -13,7 +13,7 @@ function Button({ children, type = 'button', variant = 'primary', className = ''
 Button.propTypes = {
   children: PropTypes.node.isRequired,
   type: PropTypes.string,
-  variant: PropTypes.oneOf(['primary', 'secondary', 'danger']),
+  variant: PropTypes.oneOf(['primary', 'secondary', 'danger', 'success', 'warning']),
   className: PropTypes.string,
   disabled: PropTypes.bool,
 }

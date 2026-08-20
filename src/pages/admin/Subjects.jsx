@@ -5,16 +5,21 @@ import Spinner from '../../component/ui/Spinner'
 
 function Subjects() {
   const [subjects, setSubjects] = useState([])
+  const [classes, setClasses] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [form, setForm] = useState({ name: '', code: '', description: '' })
+  const [form, setForm] = useState({ name: '', code: '', description: '', classId: '' })
   const [editingId, setEditingId] = useState(null)
 
-  const loadSubjects = async () => {
+  const loadData = async () => {
     try {
       setLoading(true)
-      const { data } = await api.get('/subjects')
-      setSubjects(Array.isArray(data) ? data : data.subjects || [])
+      const [subjectsRes, classesRes] = await Promise.all([
+        api.get('/subjects'),
+        api.get('/classes')
+      ])
+      setSubjects(Array.isArray(subjectsRes.data) ? subjectsRes.data : subjectsRes.data.data || [])
+      setClasses(Array.isArray(classesRes.data) ? classesRes.data : classesRes.data.data || [])
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {
@@ -22,7 +27,7 @@ function Subjects() {
     }
   }
 
-  useEffect(() => { loadSubjects() }, [])
+  useEffect(() => { loadData() }, [])
 
   const handleChange = (event) => {
     const { name, value } = event.target
@@ -39,9 +44,9 @@ function Subjects() {
         await api.post('/subjects', form)
       }
 
-      setForm({ name: '', code: '', description: '' })
+      setForm({ name: '', code: '', description: '', classId: '' })
       setEditingId(null)
-      loadSubjects()
+      loadData()
     } catch (err) {
       setError(getErrorMessage(err))
     }
@@ -49,7 +54,7 @@ function Subjects() {
 
   const handleEdit = (subject) => {
     setEditingId(subject.id)
-    setForm({ name: subject.name || '', code: subject.code || '', description: subject.description || '' })
+    setForm({ name: subject.name || '', code: subject.code || '', description: subject.description || '', classId: subject.classId || '' })
   }
 
   const handleDelete = async (id) => {
@@ -57,7 +62,7 @@ function Subjects() {
 
     try {
       await api.delete(`/subjects/${id}`)
-      loadSubjects()
+      loadData()
     } catch (err) {
       setError(getErrorMessage(err))
     }
@@ -74,11 +79,18 @@ function Subjects() {
           <div className="form-grid">
             <div className="field"><label>Name</label><input name="name" value={form.name} onChange={handleChange} /></div>
             <div className="field"><label>Code</label><input name="code" value={form.code} onChange={handleChange} /></div>
+            <div className="field">
+              <label>Class (Optional)</label>
+              <select name="classId" value={form.classId} onChange={handleChange}>
+                <option value="">Select Class</option>
+                {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
             <div className="field" style={{ gridColumn: '1 / -1' }}><label>Description</label><textarea name="description" value={form.description} onChange={handleChange} rows={3} /></div>
           </div>
           <div className="form-actions" style={{ marginTop: '1rem' }}>
             <Button type="submit">{editingId ? 'Save changes' : 'Create subject'}</Button>
-            {editingId ? <Button type="button" variant="secondary" onClick={() => { setEditingId(null); setForm({ name: '', code: '', description: '' }) }}>Cancel</Button> : null}
+            {editingId ? <Button type="button" variant="secondary" onClick={() => { setEditingId(null); setForm({ name: '', code: '', description: '', classId: '' }) }}>Cancel</Button> : null}
           </div>
         </form>
       </div>
@@ -97,6 +109,7 @@ function Subjects() {
                 <tr>
                   <th>Name</th>
                   <th>Code</th>
+                  <th>Class</th>
                   <th>Description</th>
                   <th>Actions</th>
                 </tr>
@@ -106,6 +119,7 @@ function Subjects() {
                   <tr key={subject.id}>
                     <td>{subject.name}</td>
                     <td>{subject.code}</td>
+                    <td>{subject.class ? subject.class.name : '—'}</td>
                     <td>{subject.description || '—'}</td>
                     <td>
                       <div className="page-actions">

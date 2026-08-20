@@ -21,10 +21,10 @@ function ClassSubjects() {
         api.get('/class-subjects'),
       ])
 
-      setClasses(Array.isArray(classRes.data) ? classRes.data : classRes.data.classes || [])
-      setSubjects(Array.isArray(subjectRes.data) ? subjectRes.data : subjectRes.data.subjects || [])
-      setTeachers(Array.isArray(teacherRes.data) ? teacherRes.data : teacherRes.data.teachers || [])
-      setAssignments(Array.isArray(assignmentRes.data) ? assignmentRes.data : assignmentRes.data.assignments || [])
+      setClasses(Array.isArray(classRes.data) ? classRes.data : classRes.data.data || [])
+      setSubjects(Array.isArray(subjectRes.data) ? subjectRes.data : subjectRes.data.data || [])
+      setTeachers(Array.isArray(teacherRes.data) ? teacherRes.data : teacherRes.data.data || [])
+      setAssignments(Array.isArray(assignmentRes.data) ? assignmentRes.data : assignmentRes.data.data || [])
     } catch (err) {
       setLoading(false)
       console.error(getErrorMessage(err))
@@ -75,9 +75,11 @@ function ClassSubjects() {
 
             <div className="field">
               <label>Subject</label>
-              <select value={form.subjectId} onChange={(e) => setForm({ ...form, subjectId: e.target.value })}>
+              <select value={form.subjectId} onChange={(e) => setForm({ ...form, subjectId: e.target.value })} disabled={!form.classId}>
                 <option value="">Select subject</option>
-                {subjects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                {subjects
+                  .filter(item => !item.classId || item.classId === form.classId)
+                  .map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
               </select>
             </div>
 

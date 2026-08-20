@@ -14,7 +14,7 @@ function Classes() {
     try {
       setLoading(true)
       const { data } = await api.get('/classes')
-      setClasses(Array.isArray(data) ? data : data.classes || [])
+      setClasses(Array.isArray(data) ? data : data.data || [])
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import api, { getErrorMessage } from '../../app/api'
 import Button from '../../component/ui/Button'
+import Modal from '../../component/ui/Modal'
 import Spinner from '../../component/ui/Spinner'
 
 function Users() {
@@ -10,12 +11,13 @@ function Users() {
   const [query, setQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [selectedUser, setSelectedUser] = useState(null)
 
   const loadUsers = async () => {
     try {
       setLoading(true)
       const { data } = await api.get('/users')
-      setUsers(Array.isArray(data) ? data : data.users || [])
+      setUsers(Array.isArray(data) ? data : data.data || [])
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {
@@ -31,14 +33,18 @@ function Users() {
     return users.filter((user) => {
       const matchesQuery = [user.firstName, user.lastName, user.email].join(' ').toLowerCase().includes(query.toLowerCase())
       const matchesRole = roleFilter === 'all' || user.role === roleFilter
-      const matchesStatus = statusFilter === 'all' || String(user.status || 'active') === statusFilter
+      
+      let matchesStatus = true
+      if (statusFilter === 'active') matchesStatus = user.isActive
+      if (statusFilter === 'inactive') matchesStatus = !user.isActive
+
       return matchesQuery && matchesRole && matchesStatus
     })
   }, [users, query, roleFilter, statusFilter])
 
-  const toggleStatus = async (id, status) => {
+  const toggleStatus = async (id, currentIsActive) => {
     try {
-      await api.patch(`/users/${id}/status`, { status: status === 'active' ? 'inactive' : 'active' })
+      await api.patch(`/users/${id}/status`, { isActive: !currentIsActive })
       loadUsers()
     } catch (err) {
       console.error(getErrorMessage(err))
@@ -118,15 +124,17 @@ function Users() {
                     <td>{user.role}</td>
                     <td>{user.phone || '—'}</td>
                     <td>
-                      <span className={`badge ${user.status === 'inactive' ? 'warning' : 'success'}`}>
-                        {user.status || 'active'}
+                      <span className={`badge ${!user.isActive ? 'warning' : 'success'}`}>
+                        {user.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td>{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—'}</td>
                     <td>
                       <div className="page-actions">
-                        <Button variant="secondary" onClick={() => console.log(user)}>View</Button>
-                        <Button variant="secondary" onClick={() => toggleStatus(user.id, user.status || 'active')}>Toggle</Button>
+                        <Button variant="secondary" onClick={() => setSelectedUser(user)}>View</Button>
+                        <Button variant={user.isActive ? 'warning' : 'success'} onClick={() => toggleStatus(user.id, user.isActive)}>
+                          {user.isActive ? 'Deactivate' : 'Activate'}
+                        </Button>
                         <Button variant="danger" onClick={() => deleteUser(user.id)}>Delete</Button>
                       </div>
                     </td>
@@ -137,6 +145,29 @@ function Users() {
           </div>
         )}
       </div>
+
+      <Modal isOpen={!!selectedUser} onClose={() => setSelectedUser(null)} title="User Details">
+        {selectedUser && (
+          <div className="content-grid">
+            <div className="field">
+              <label>Name</label>
+              <input type="text" readOnly value={`${selectedUser.firstName} ${selectedUser.lastName}`} />
+            </div>
+            <div className="field">
+              <label>Email</label>
+              <input type="text" readOnly value={selectedUser.email} />
+            </div>
+            <div className="field">
+              <label>Role</label>
+              <input type="text" readOnly value={selectedUser.role} />
+            </div>
+            <div className="field">
+              <label>Phone</label>
+              <input type="text" readOnly value={selectedUser.phone || 'N/A'} />
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

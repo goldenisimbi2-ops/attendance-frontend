@@ -3,6 +3,7 @@ import { AlertCircle, BookOpen, Info } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import api, { getErrorMessage } from '../../app/api'
 import Spinner from '../../component/ui/Spinner'
+import Modal from '../../component/ui/Modal'
 
 function MyClasses() {
   const navigate = useNavigate()
@@ -11,6 +12,7 @@ function MyClasses() {
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [viewingStudentsFor, setViewingStudentsFor] = useState(null)
 
   const loadData = async () => {
     try {
@@ -70,7 +72,7 @@ function MyClasses() {
     return {
       ...item,
       sessions: assignmentSessions,
-      studentCount: item.studentCount || item.students?.length || null,
+      studentCount: item.class?.students?.length ?? item.studentCount ?? null,
       attendanceRate: rate,
       nextSession,
     }
@@ -125,13 +127,22 @@ function MyClasses() {
                       : '—'}
                   </p>
                 </div>
-                <div className="session-card__footer">
+                <div className="session-card__footer" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
-                    className="btn btn-primary full-width"
+                    className="btn btn-primary"
+                    style={{ flex: 1 }}
                     onClick={() => navigate('/teacher/sessions')}
                   >
                     View Class Sessions
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ flex: 1 }}
+                    onClick={() => setViewingStudentsFor(item)}
+                  >
+                    View Students
                   </button>
                 </div>
               </div>
@@ -147,6 +158,43 @@ function MyClasses() {
           counts require the backend to include class/student associations in the class-subject response.
         </span>
       </div>
+
+      <Modal
+        isOpen={!!viewingStudentsFor}
+        onClose={() => setViewingStudentsFor(null)}
+        title={`Enrolled Students - ${viewingStudentsFor?.class?.name || 'Class'}`}
+      >
+        {viewingStudentsFor && (
+          <div className="table-responsive">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Gender</th>
+                  <th>Date of Birth</th>
+                </tr>
+              </thead>
+              <tbody>
+                {viewingStudentsFor.class?.students && viewingStudentsFor.class.students.length > 0 ? (
+                  viewingStudentsFor.class.students.map((student) => (
+                    <tr key={student.id}>
+                      <td>{student.user?.firstName} {student.user?.lastName}</td>
+                      <td>{student.gender || '—'}</td>
+                      <td>{student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString() : '—'}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="3" style={{ textAlign: 'center' }} className="muted">
+                      No students found in this class.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

@@ -45,18 +45,21 @@ function MarkAttendance() {
         setError('')
         setSuccessMsg('')
 
-        const [sessionRes, recordsRes, usersRes] = await Promise.all([
+        const [sessionRes, recordsRes] = await Promise.all([
           api.get(`/attendance-sessions/${sessionId}`).catch(() => ({ data: { data: null } })),
           api.get(`/attendance/session/${sessionId}`).catch(() => ({ data: { data: [] } })),
-          api.get('/users').catch(() => ({ data: { data: [] } })),
         ])
 
         const sData = sessionRes.data?.data || sessionRes.data || {}
         setSessionDetail(sData)
-
         const records = recordsRes.data?.data || []
-        const allUsers = usersRes.data?.data || []
-        const studentUsers = allUsers.filter((u) => u.role === 'student')
+        
+        let studentUsers = []
+        const classId = sData.classSubject?.classId || sData.classSubject?.class?.id
+        if (classId) {
+          const usersRes = await api.get(`/classes/${classId}/students`).catch(() => ({ data: { data: [] } }))
+          studentUsers = usersRes.data?.data || []
+        }
 
         if (records.length > 0) {
           setStudents(
@@ -79,12 +82,7 @@ function MarkAttendance() {
             })),
           )
         } else {
-          // Default fallback mock roster if backend is empty
-          setStudents([
-            { id: '1', studentName: 'Golden Isimbi', studentNumber: 'STD-001', status: 'present', remarks: '' },
-            { id: '2', studentName: 'Alex Hirwa', studentNumber: 'STD-002', status: 'present', remarks: '' },
-            { id: '3', studentName: 'Keza Marie', studentNumber: 'STD-003', status: 'present', remarks: '' },
-          ])
+          setStudents([])
         }
       } catch (err) {
         setError(getErrorMessage(err))

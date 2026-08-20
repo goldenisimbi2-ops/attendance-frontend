@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { GraduationCap, UserRound, BookOpen, BarChart3, Plus } from 'lucide-react'
+import { GraduationCap, UserRound, BookOpen, BarChart3, Plus, Users, CalendarCheck2, ArrowRight, Key } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../app/api'
 import { useAuth } from '../../app/store'
@@ -15,6 +15,9 @@ function AdminDashboard() {
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [keys, setKeys] = useState([])
+  const [keyRole, setKeyRole] = useState('teacher')
+  const [isGenerating, setIsGenerating] = useState(false)
 
   useEffect(() => {
     fetchDashboard()
@@ -24,12 +27,33 @@ function AdminDashboard() {
     try {
       setLoading(true)
       setError(null)
-      const { data } = await api.get('/dashboard')
-      setStats(data)
+      const [dashRes, keysRes] = await Promise.all([
+        api.get('/dashboard'),
+        api.get('/registration-keys')
+      ])
+      setStats(dashRes.data?.data || dashRes.data)
+      if (keysRes.data.success) {
+        setKeys(keysRes.data.data)
+      }
     } catch (err) {
       setError(err.message || 'Failed to load dashboard')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleGenerateKey = async (e) => {
+    e.preventDefault()
+    try {
+      setIsGenerating(true)
+      const { data } = await api.post('/registration-keys', { role: keyRole })
+      if (data.success) {
+        setKeys([data.data, ...keys])
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to generate key')
+    } finally {
+      setIsGenerating(false)
     }
   }
 
@@ -62,16 +86,23 @@ function AdminDashboard() {
       </div>
 
       <div className="stats-grid">
-        {totals.map(({ key, label, value, icon: Icon }) => (
-          <article key={key} className="metric-card">
-            <div className="metric-card__icon"><Icon size={20} /></div>
-            <div className="metric-card__content">
-              <span>{label}</span>
-              <strong>{value}</strong>
-              <small>Updated today</small>
-            </div>
-          </article>
-        ))}
+        {stats?.totals?.map(({ key, label, value, icon: IconName }) => {
+          let Icon = BarChart3;
+          if (IconName === 'Users') Icon = Users;
+          if (IconName === 'UserRound') Icon = UserRound;
+          if (IconName === 'GraduationCap') Icon = GraduationCap;
+          if (IconName === 'BookOpen') Icon = BookOpen;
+          return (
+            <article key={key} className="metric-card">
+              <div className="metric-card__icon"><Icon size={20} /></div>
+              <div className="metric-card__content">
+                <span>{label}</span>
+                <strong>{value}</strong>
+                <small>Updated today</small>
+              </div>
+            </article>
+          )
+        })}
       </div>
 
       <div className="content-grid content-grid--two">
@@ -120,31 +151,25 @@ function AdminDashboard() {
         <section className="panel">
           <div className="panel__header">
             <h3>Recent attendance sessions</h3>
-            <button type="button" className="text-button">See all</button>
+            <button type="button" className="text-button" onClick={() => navigate('/admin/attendance')}>See all</button>
           </div>
 
           <div className="session-list">
-            <div className="session-row">
-              <div>
-                <strong>Biology Class</strong>
-                <span>9:00 AM • Room 205</span>
-              </div>
-              <span className="badge badge--success">Open</span>
-            </div>
-            <div className="session-row">
-              <div>
-                <strong>Math 101</strong>
-                <span>11:30 AM • Hall A</span>
-              </div>
-              <span className="badge badge--warning">Late</span>
-            </div>
-            <div className="session-row">
-              <div>
-                <strong>English Literature</strong>
-                <span>2:00 PM • Block B</span>
-              </div>
-              <span className="badge badge--info">Closed</span>
-            </div>
+            {!stats?.recentSessions || stats.recentSessions.length === 0 ? (
+              <p style={{ padding: '16px', color: '#666' }}>No recent sessions found.</p>
+            ) : (
+              stats.recentSessions.map(session => (
+                <div key={session.id} className="session-row">
+                  <div>
+                    <strong>{session.title}</strong>
+                    <span>{session.subtitle}</span>
+                  </div>
+                  <span className={`badge badge--${session.status === 'open' ? 'success' : session.status === 'closed' ? 'info' : 'warning'}`}>
+                    {session.statusLabel}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </section>
 
@@ -153,11 +178,44 @@ function AdminDashboard() {
             <h3>Quick actions</h3>
           </div>
           <div className="action-grid">
-            <button type="button" className="action-button"><Plus size={16} /> Add Student</button>
-            <button type="button" className="action-button"><Users size={16} /> Add Teacher</button>
-            <button type="button" className="action-button"><BookOpen size={16} /> Create Class</button>
-            <button type="button" className="action-button"><CalendarCheck2 size={16} /> Create Subject</button>
-            <button type="button" className="action-button action-button--wide"><ArrowRight size={16} /> View Attendance</button>
+            <button type="button" className="action-button" onClick={() => navigate('/admin/students')}><Plus size={16} /> Add Student</button>
+            <button type="button" className="action-button" onClick={() => navigate('/admin/teachers')}><Users size={16} /> Add Teacher</button>
+            <button type="button" className="action-button" onClick={() => navigate('/admin/classes')}><BookOpen size={16} /> Create Class</button>
+            <button type="button" className="action-button" onClick={() => navigate('/admin/subjects')}><CalendarCheck2 size={16} /> Create Subject</button>
+            <button type="button" className="action-button action-button--wide" onClick={() => navigate('/admin/attendance')}><ArrowRight size={16} /> View Attendance</button>
+          </div>
+        </section>
+      </div>
+
+      <div className="content-grid">
+        <section className="panel">
+          <div className="panel__header">
+            <h3>Registration Keys</h3>
+            <form onSubmit={handleGenerateKey} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <select value={keyRole} onChange={e => setKeyRole(e.target.value)} style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                <option value="teacher">Teacher</option>
+                <option value="head_teacher">Head Teacher</option>
+                <option value="admin">Admin</option>
+              </select>
+              <Button type="submit" disabled={isGenerating}><Key size={16} /> Generate</Button>
+            </form>
+          </div>
+          
+          <div className="session-list" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+            {keys.length === 0 && <p style={{ padding: '16px', color: '#666' }}>No registration keys generated yet.</p>}
+            {keys.map(k => (
+              <div key={k.id} className="session-row">
+                <div>
+                  <strong>{k.key}</strong>
+                  <span>Role: {k.role.replace('_', ' ')} • Created by {k.creator?.firstName}</span>
+                </div>
+                {k.isUsed ? (
+                  <span className="badge badge--danger">Used by {k.user?.firstName} {k.user?.lastName}</span>
+                ) : (
+                  <span className="badge badge--success">Available</span>
+                )}
+              </div>
+            ))}
           </div>
         </section>
       </div>

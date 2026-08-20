@@ -12,7 +12,7 @@ function Attendance() {
       try {
         setLoading(true)
         const { data } = await api.get('/attendance')
-        setRecords(Array.isArray(data) ? data : data.records || [])
+        setRecords(Array.isArray(data) ? data : data.data || [])
       } catch (err) {
         setError(getErrorMessage(err))
       } finally {

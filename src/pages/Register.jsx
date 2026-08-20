@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ArrowRight, CheckCircle2, ShieldCheck } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../app/store'
@@ -12,6 +12,8 @@ const initialState = {
   password: '',
   confirmPassword: '',
   role: 'student',
+  secretKey: '',
+  classId: ''
 }
 
 function Register() {
@@ -20,6 +22,16 @@ function Register() {
   const [form, setForm] = useState(initialState)
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [classes, setClasses] = useState([])
+
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_API_URL}/classes/public`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) setClasses(data.data)
+      })
+      .catch(console.error)
+  }, [])
 
   const validate = () => {
     const nextErrors = {}
@@ -33,6 +45,13 @@ function Register() {
     else if (form.password.length < 6) nextErrors.password = 'Password must be at least 6 characters.'
     if (!form.confirmPassword) nextErrors.confirmPassword = 'Confirm your password.'
     else if (form.confirmPassword !== form.password) nextErrors.confirmPassword = 'Passwords do not match.'
+    
+    if (form.role !== 'student' && !form.secretKey.trim()) {
+      nextErrors.secretKey = 'Secret key is required for staff roles.'
+    }
+    if (form.role === 'student' && !form.classId) {
+      nextErrors.classId = 'Please select your class.'
+    }
 
     return nextErrors
   }
@@ -51,7 +70,7 @@ function Register() {
 
     try {
       setIsSubmitting(true)
-      await register({ ...form, role: 'student' })
+      await register({ ...form })
       navigate('/login')
     } catch (error) {
       setErrors({ form: error.message || 'Unable to create account right now.' })
@@ -128,6 +147,36 @@ function Register() {
                 <input id="confirmPassword" type="password" name="confirmPassword" value={form.confirmPassword} onChange={handleChange} />
                 {errors.confirmPassword ? <small className="field-error">{errors.confirmPassword}</small> : null}
               </div>
+              <div className="field auth-span-2">
+                <label htmlFor="role">Account Role</label>
+                <select id="role" name="role" value={form.role} onChange={handleChange}>
+                  <option value="student">Student</option>
+                  <option value="teacher">Teacher</option>
+                  <option value="head_teacher">Head Teacher</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+
+              {form.role !== 'student' && (
+                <div className="field auth-span-2">
+                  <label htmlFor="secretKey">Secret Key</label>
+                  <input id="secretKey" name="secretKey" value={form.secretKey} onChange={handleChange} placeholder="Provided by your administrator" />
+                  {errors.secretKey ? <small className="field-error">{errors.secretKey}</small> : null}
+                </div>
+              )}
+
+              {form.role === 'student' && (
+                <div className="field auth-span-2">
+                  <label htmlFor="classId">Select Class</label>
+                  <select id="classId" name="classId" value={form.classId} onChange={handleChange}>
+                    <option value="">-- Choose your class --</option>
+                    {classes.map(c => (
+                      <option key={c.id} value={c.id}>{c.name} {c.level ? `(Level ${c.level})` : ''}</option>
+                    ))}
+                  </select>
+                  {errors.classId ? <small className="field-error">{errors.classId}</small> : null}
+                </div>
+              )}
             </div>
 
             {errors.form ? <div className="message-box message-box--danger">{errors.form}</div> : null}

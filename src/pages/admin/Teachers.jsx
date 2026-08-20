@@ -12,7 +12,7 @@ function Teachers() {
       try {
         setLoading(true)
         const { data } = await api.get('/teachers')
-        setTeachers(Array.isArray(data) ? data : data.teachers || [])
+        setTeachers(Array.isArray(data) ? data : data.data || [])
       } catch (err) {
         setError(getErrorMessage(err))
       } finally {
